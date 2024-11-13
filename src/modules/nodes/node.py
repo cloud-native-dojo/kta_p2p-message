@@ -50,6 +50,27 @@ class Node:
         for node in recipients:
             node.receive_post(post.get_post_data())
 
+    def send_post_order_log_m(self, post: Post):
+        node_ids = list(Dns.node_dict.keys())
+        node_count = len(node_ids)
+        start_index = node_ids.index(self.__id)
+        loop_completed = False
+
+        recipients = []
+        step = 2  # 2の自乗分離れるステップ
+
+        for i in range(1, node_count):
+            target_index = (start_index + step ** i) % node_count
+            if target_index < start_index:
+                loop_completed = True
+            if loop_completed and node_ids[target_index] >= self.__id:
+                break
+            recipients.append(Dns.node_dict[node_ids[target_index]])
+
+        for node in recipients:
+            self.communication_count += 1
+            node.receive_post(post.get_post_data())
+
     def sync_posts(self):
         if self.is_online():
             for node_id, node in Dns.node_dict.items():
@@ -64,6 +85,38 @@ class Node:
                                           if nid != self.__id and nid != node_id]
                             self.communication_count += len(recipients)
                             for recipient in recipients:
+                                recipient.receive_post(post_data)
+
+    def sync_posts_order_log_m(self):
+        if self.is_online():
+            node_ids = list(Dns.node_dict.keys())
+            node_count = len(node_ids)
+            start_index = node_ids.index(self.__id)
+
+            for node_id, node in Dns.node_dict.items():
+                if node_id != self.__id:
+                    self.communication_count += 1
+                    posts_copy = node.__posts.copy()
+                    for post_id, post_data in posts_copy.items():
+                        if post_id not in self.__posts:
+                            self.__posts[post_id] = post_data
+                            # 直接post_dataを使用して他のノードと共有
+                            recipients = []
+                            step = 2  # 2の自乗分離れるステップ
+                            loop_completed = False
+
+                            for i in range(1, node_count):
+                                target_index = (
+                                    start_index + step ** i) % node_count
+                                if target_index < start_index:
+                                    loop_completed = True
+                                if loop_completed and node_ids[target_index] >= self.__id:
+                                    break
+                                recipients.append(
+                                    Dns.node_dict[node_ids[target_index]])
+
+                            for recipient in recipients:
+                                self.communication_count += 1
                                 recipient.receive_post(post_data)
 
     def get_posts(self):

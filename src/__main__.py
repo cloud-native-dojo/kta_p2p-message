@@ -47,7 +47,7 @@ def main(node_count=DEFAULT_NODE_COUNT, max_posts=DEFAULT_MAX_POSTS, sync_probab
         # ランダムな同期
         if randint(1, 100) <= sync_probability * 100:  # sync_probabilityの確率で同期を実行
             syncing_node = choice(nodes)
-            syncing_node.sync_posts()
+            syncing_node.sync_posts_order_log_m()
             if print_output:
                 print(f"ノード {syncing_node.get_id()} が同期を実行")
         
@@ -59,10 +59,19 @@ def main(node_count=DEFAULT_NODE_COUNT, max_posts=DEFAULT_MAX_POSTS, sync_probab
 
     # 投稿カバー率の統計を表示
     print("\n=== 投稿カバー率 ===")
-    for node in nodes:
-        posts_count = len(node.get_posts())
-        coverage_percent = (posts_count / total_posts * 100) if total_posts > 0 else 0
-        print(f"ノード {node.get_id()}: {posts_count}/{total_posts} 投稿 ({coverage_percent:.1f}%)")
+    if len(nodes) > 50:
+        coverage_percents = [(len(node.get_posts()) / total_posts * 100) if total_posts > 0 else 0 for node in nodes]
+        average_coverage = sum(coverage_percents) / len(nodes)
+        max_coverage = max(coverage_percents)
+        min_coverage = min(coverage_percents)
+        print(f"平均投稿カバー率: {average_coverage:.1f}%")
+        print(f"最大投稿カバー率: {max_coverage:.1f}%")
+        print(f"最小投稿カバー率: {min_coverage:.1f}%")
+    else:
+        for node in nodes:
+            posts_count = len(node.get_posts())
+            coverage_percent = (posts_count / total_posts * 100) if total_posts > 0 else 0
+            print(f"ノード {node.get_id()}: {posts_count}/{total_posts} 投稿 ({coverage_percent:.1f}%)")
 
     # 最終統計を表示
     print("\n=== 最終統計 ===")
@@ -71,7 +80,16 @@ def main(node_count=DEFAULT_NODE_COUNT, max_posts=DEFAULT_MAX_POSTS, sync_probab
     for node in nodes:
         comm_count = node.communication_count
         total_communications += comm_count
-        print(f"ノード {node.get_id()}: 通信回数 {comm_count}回, 投稿数 {node.get_post_count()}件")
+        if len(nodes) < 50:
+            print(f"ノード {node.get_id()}: 通信回数 {comm_count}回, 投稿数 {node.get_post_count()}件")
+    if len(nodes) > 50:
+        comm_counts = [node.communication_count for node in nodes]
+        average_comm = sum(comm_counts) / len(nodes)
+        max_comm = max(comm_counts)
+        min_comm = min(comm_counts)
+        print(f"平均通信回数: {average_comm:.1f}")
+        print(f"最大通信回数: {max_comm}")
+        print(f"最小通信回数: {min_comm}")
     
     print(f"\n全ノードの総通信回数: {total_communications}")
 
